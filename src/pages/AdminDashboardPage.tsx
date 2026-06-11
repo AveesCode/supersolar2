@@ -14,7 +14,7 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 import { Participant, Match, SystemState } from '../types';
-import { generateFullSchedule } from '../lib/schedule';
+import { generateFullSchedule, getDefaultParticipants } from '../lib/schedule';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, 
@@ -97,21 +97,53 @@ export default function AdminDashboardPage() {
 
     // Listen to participants
     const unsubParticipants = onSnapshot(collection(db, 'participants'), (snap) => {
-      const list: Participant[] = [];
-      snap.forEach((docRef) => {
-        list.push(docRef.data() as Participant);
-      });
-      setParticipants(list);
+      if (!snap.empty) {
+        const list: Participant[] = [];
+        snap.forEach((docRef) => {
+          list.push(docRef.data() as Participant);
+        });
+        setParticipants(list);
+        localStorage.setItem('world_cup_offline_participants', JSON.stringify(list));
+      } else {
+        const initPlayers = getDefaultParticipants();
+        setParticipants(initPlayers);
+        localStorage.setItem('world_cup_offline_participants', JSON.stringify(initPlayers));
+      }
+    }, () => {
+      const savedPlayers = localStorage.getItem('world_cup_offline_participants');
+      if (savedPlayers) {
+        try {
+          setParticipants(JSON.parse(savedPlayers));
+          return;
+        } catch (e) {}
+      }
+      setParticipants(getDefaultParticipants());
     });
 
     // Listen to matches
     const unsubMatches = onSnapshot(collection(db, 'matches'), (snap) => {
-      const list: Match[] = [];
-      snap.forEach((docRef) => {
-        list.push(docRef.data() as Match);
-      });
-      list.sort((a, b) => Number(a.id) - Number(b.id));
-      setMatches(list);
+      if (!snap.empty) {
+        const list: Match[] = [];
+        snap.forEach((docRef) => {
+          list.push(docRef.data() as Match);
+        });
+        list.sort((a, b) => Number(a.id) - Number(b.id));
+        setMatches(list);
+        localStorage.setItem('world_cup_offline_matches', JSON.stringify(list));
+      } else {
+        const initSchedule = generateFullSchedule();
+        setMatches(initSchedule);
+        localStorage.setItem('world_cup_offline_matches', JSON.stringify(initSchedule));
+      }
+    }, () => {
+      const savedMatches = localStorage.getItem('world_cup_offline_matches');
+      if (savedMatches) {
+        try {
+          setMatches(JSON.parse(savedMatches));
+          return;
+        } catch (e) {}
+      }
+      setMatches(generateFullSchedule());
     });
 
     // Listen to system state

@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError } from '../lib/firebase';
 import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { Participant, Match, SystemState, OperationType } from '../types';
-import { generateFullSchedule } from '../lib/schedule';
+import { generateFullSchedule, getDefaultParticipants } from '../lib/schedule';
 import StandingsTable from '../components/StandingsTable';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -85,10 +85,12 @@ export default function StandingsPage() {
         // Sort numerically
         list.sort((a, b) => Number(a.id) - Number(b.id));
         setMatches(list);
+        localStorage.setItem('world_cup_offline_matches', JSON.stringify(list));
       } else {
         // Empty db! Let's auto-init schedule
         const initSchedule = generateFullSchedule();
         setMatches(initSchedule);
+        localStorage.setItem('world_cup_offline_matches', JSON.stringify(initSchedule));
         // Write each statically to initialize cloud Firestore DB
         initSchedule.forEach(async (m) => {
           try {
@@ -99,20 +101,51 @@ export default function StandingsPage() {
         });
       }
     }, () => {
+      const savedMatches = localStorage.getItem('world_cup_offline_matches');
+      if (savedMatches) {
+        try {
+          setMatches(JSON.parse(savedMatches));
+          return;
+        } catch (e) {}
+      }
       setMatches(generateFullSchedule());
     });
 
     // 3. Subscribe to Participants scores
     const participantsCol = collection(db, 'participants');
     const unsubParticipants = onSnapshot(participantsCol, (snap) => {
-      const list: Participant[] = [];
-      snap.forEach((docRef) => {
-        list.push(docRef.data() as Participant);
-      });
-      setParticipants(list);
+      if (!snap.empty) {
+        const list: Participant[] = [];
+        snap.forEach((docRef) => {
+          list.push(docRef.data() as Participant);
+        });
+        setParticipants(list);
+        localStorage.setItem('world_cup_offline_participants', JSON.stringify(list));
+        setDbState('connected');
+      } else {
+        // Empty db of participants! Let's auto-init players
+        const initPlayers = getDefaultParticipants();
+        setParticipants(initPlayers);
+        localStorage.setItem('world_cup_offline_participants', JSON.stringify(initPlayers));
+        initPlayers.forEach(async (p) => {
+          try {
+            await setDoc(doc(db, 'participants', p.id), p);
+          } catch (e) {
+            console.warn("Bootstrap write prevented for participants.", p.id, e);
+          }
+        });
+      }
     }, () => {
       // Offline mock fallback if permissions not finalized yet
       setDbState('offline_fallback');
+      const savedPlayers = localStorage.getItem('world_cup_offline_participants');
+      if (savedPlayers) {
+        try {
+          setParticipants(JSON.parse(savedPlayers));
+          return;
+        } catch (e) {}
+      }
+      setParticipants(getDefaultParticipants());
     });
 
     return () => {
@@ -186,7 +219,13 @@ export default function StandingsPage() {
       showFeedback('success', `Saved Pick: ${choice === 'A' ? targetMatch.a : choice === 'B' ? targetMatch.b : 'Draw'}`);
     } catch (e: any) {
       // Fallback update on interface for offline/mock sandbox states
-      setCurrentUser((prev) => prev ? { ...prev, picks: updatedPicks } : null);
+      const nextUser = { ...currentUser, picks: updatedPicks, updatedAt: new Date().toISOString() };
+      setCurrentUser(nextUser);
+      setParticipants((prev) => {
+        const list = prev.map(p => p.id === currentUser.id ? nextUser : p);
+        localStorage.setItem('world_cup_offline_participants', JSON.stringify(list));
+        return list;
+      });
       showFeedback('success', 'Local prediction registered (Mock Sandbox Enabled)');
     }
   };
@@ -240,7 +279,37 @@ export default function StandingsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 z-10 font-mono">
+        <div className="flex flex-wrap items-center gap-3 z-10 font-mono">
+          <button 
+            type="button"
+            onClick={() => {
+              if (confirm("⚽ Force seed/refresh matches and all 14 pre-registered World Cup participants? This resets offline data states and attempts background synchronizations.")) {
+                localStorage.removeItem('world_cup_offline_matches');
+                localStorage.removeItem('world_cup_offline_participants');
+                
+                const initPlayers = getDefaultParticipants();
+                const initSchedule = generateFullSchedule();
+                setParticipants(initPlayers);
+                setMatches(initSchedule);
+                localStorage.setItem('world_cup_offline_participants', JSON.stringify(initPlayers));
+                localStorage.setItem('world_cup_offline_matches', JSON.stringify(initSchedule));
+
+                // Auto-register background Firestore docs
+                initPlayers.forEach(async (p) => {
+                  try { await setDoc(doc(db, 'participants', p.id), p); } catch(e) {}
+                });
+                initSchedule.forEach(async (m) => {
+                  try { await setDoc(doc(db, 'matches', m.id), m); } catch(e) {}
+                });
+
+                showFeedback('success', 'FIFA 2026 participants and matches schedule re-seeded successfully.');
+              }
+            }}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-705 px-3 py-2 rounded-2xl transition text-[10px] text-slate-300 hover:text-yellow-400 font-bold uppercase tracking-wider cursor-pointer"
+          >
+            🔄 Force Re-Seed
+          </button>
+
           {dbState === 'connected' ? (
             <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-2xl">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />

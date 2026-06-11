@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Match } from '../types';
+import { Match, Participant } from '../types';
 
 export function generateFullSchedule(): Match[] {
   // Official host cities and stadiums for FIFA World Cup 2026
@@ -254,4 +254,34 @@ export function generateFullSchedule(): Match[] {
   });
 
   return schedule;
+}
+
+export function getDefaultParticipants(): Participant[] {
+  const list = [
+    { first: "Avinash", last: "Kumar", code: "AVIKUM" },
+    { first: "Alex", last: "Shults", code: "ASHULT" },
+    { first: "Dean", last: "Linenberg", code: "DLINEN" },
+    { first: "Fadi", last: "Alrabadi", code: "FADIAL" },
+    { first: "Jack", last: "Upton", code: "JUPTON" },
+    { first: "Jacob", last: "Duncan", code: "JDUNC" },
+    { first: "Kartik", last: "Emani", code: "KEMANI" },
+    { first: "Marco Jordan", last: "Cavallini", code: "MJCAVA" },
+    { first: "Mridhul", last: "Dhar", code: "MDHAR" },
+    { first: "Priyanka", last: "Bhoothpur", code: "PBHOOT" },
+    { first: "Sakthivel", last: "Shanmugam", code: "SSHANC" },
+    { first: "Shria", last: "Siramshetty", code: "SHRIA6" },
+    { first: "Claude", last: "Mura", code: "CMURA6" },
+    { first: "Marco", last: "Lang", code: "MLANG6" }
+  ];
+
+  return list.map((item, idx) => ({
+    id: `p_init_${idx}_${item.first.toLowerCase().replace(/\s/g, '')}`,
+    firstName: item.first,
+    lastName: item.last,
+    code: item.code.toUpperCase(),
+    picks: {},
+    isActive: true,
+    createdAt: "2026-06-11T12:00:00.000Z",
+    updatedAt: "2026-06-11T12:00:00.000Z"
+  }));
 }
