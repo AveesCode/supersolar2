@@ -340,6 +340,96 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // 8. OVERWRITE / SEED MATCHES WITH ALL FIFA 2026 OFFICIALS
+  const handleResetMatchSchedules = async () => {
+    if (!confirm('🛑 WARNING: This will overwrite match details for ALL 104 matches back to the official FIFA 2026 tournament specifications! Proceed?')) return;
+
+    try {
+      showFeedback('success', 'Resetting and seeding 104 matches... Please wait.');
+      const initSchedule = generateFullSchedule();
+      for (const m of initSchedule) {
+        await setDoc(doc(db, 'matches', m.id), m);
+      }
+      showFeedback('success', 'FIFA 2026 match schedule updated and synced database successfully!');
+    } catch (e) {
+      setMatches(generateFullSchedule());
+      showFeedback('success', 'FIFA 2026 match schedule reset completed locally (Sandbox Mode)');
+    }
+  };
+
+  // 9. BULK PRE-REGISTER THE OFFICIAL 14 PARTICIPANTS WITH CODES
+  const handleBulkPreRegister = async () => {
+    if (!confirm('📋 Proceed to pre-register the 14 official FIFA World Cup prediction game participants and generate their custom credentials?')) return;
+
+    const preregisteredList = [
+      { first: "Avinash", last: "Kumar", code: "AVIKUM" },
+      { first: "Alex", last: "Shults", code: "ASHULT" },
+      { first: "Dean", last: "Linenberg", code: "DLINEN" },
+      { first: "Fadi", last: "Alrabadi", code: "FADIAL" },
+      { first: "Jack", last: "Upton", code: "JUPTON" },
+      { first: "Jacob", last: "Duncan", code: "JDUNC" },
+      { first: "Kartik", last: "Emani", code: "KEMANI" },
+      { first: "Marco Jordan", last: "Cavallini", code: "MJCAVA" },
+      { first: "Mridhul", last: "Dhar", code: "MDHAR" },
+      { first: "Priyanka", last: "Bhoothpur", code: "PBHOOT" },
+      { first: "Sakthivel", last: "Shanmugam", code: "SSHANC" },
+      { first: "Shria", last: "Siramshetty", code: "SHRIA6" },
+      { first: "Claude", last: "Mura", code: "CMURA6" },
+      { first: "Marco", last: "Lang", code: "MLANG6" }
+    ];
+
+    try {
+      showFeedback('success', 'Bulk registering participants... Please wait.');
+      let addedCount = 0;
+      for (const item of preregisteredList) {
+        const codeUpper = item.code.toUpperCase();
+        if (participants.some(p => p.code.toUpperCase() === codeUpper)) {
+          continue; // skip if already registered
+        }
+
+        const nextId = 'p_' + item.first.toLowerCase().substring(0, 3).replace(/\s/g, '') + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+        const newParticipant: Participant = {
+          id: nextId,
+          firstName: item.first,
+          lastName: item.last,
+          code: codeUpper,
+          picks: {},
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        await setDoc(doc(db, 'participants', nextId), newParticipant);
+        addedCount++;
+      }
+      showFeedback('success', `Bulk register successfully processed! ${addedCount} new players registered.`);
+    } catch (e) {
+      // Local fallback simulation
+      const newLocalPlayers: Participant[] = [];
+      let addedLocally = 0;
+      for (const item of preregisteredList) {
+        const codeUpper = item.code.toUpperCase();
+        if (participants.some(p => p.code.toUpperCase() === codeUpper)) {
+          continue;
+        }
+        const nextId = 'p_' + item.first.toLowerCase().substring(0, 3).replace(/\s/g, '') + Date.now().toString(36);
+        newLocalPlayers.push({
+          id: nextId,
+          firstName: item.first,
+          lastName: item.last,
+          code: codeUpper,
+          picks: {},
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        addedLocally++;
+      }
+      setParticipants(prev => [...prev, ...newLocalPlayers]);
+      showFeedback('success', `Simulated bulk registration offline. ${addedLocally} players added locally.`);
+    }
+  };
+
   const isAuthorized = isSandboxAuthorized || adminUser?.email === OFFICIAL_ADMIN_EMAIL;
 
   if (!isAuthorized) {
@@ -560,6 +650,20 @@ export default function AdminDashboardPage() {
                     ADD TO SCOREBOARD
                   </button>
                 </form>
+
+                <div className="relative flex py-1 items-center justify-center">
+                  <div className="flex-grow border-t border-slate-800"></div>
+                  <span className="flex-shrink mx-2 text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-900 px-1 font-mono">QUICK PRE-REGISTRY</span>
+                  <div className="flex-grow border-t border-slate-800"></div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleBulkPreRegister}
+                  className="w-full py-2.5 bg-slate-950 border border-slate-800 hover:bg-slate-850 hover:border-yellow-500/40 text-yellow-500 font-bold text-xs uppercase rounded-lg transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> BATCH PRE-REGISTER (14 PLAYERS)
+                </button>
               </div>
 
               {/* Users Grid */}
@@ -898,6 +1002,20 @@ export default function AdminDashboardPage() {
                       className="p-2 px-4 rounded bg-red-650 hover:bg-red-600 text-white font-extrabold text-[10px] uppercase transition-all flex items-center gap-1.5"
                     >
                       <RotateCcw className="w-3.5 h-3.5" /> PURGE SCOREBOARD PICKS
+                    </button>
+                  </div>
+
+                  {/* Sync match schedule */}
+                  <div className="p-4 bg-yellow-950/20 border border-yellow-900/30 rounded-2xl space-y-2.5">
+                    <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest block">Re-Seed Official Match Schedule</span>
+                    <p className="text-[10px] text-slate-400 leading-relaxed font-sans font-medium">
+                      Overwrites the database matches with the official 104 FIFA World Cup 2026 match schedule, including hosts (USA, Mexico, Canada), correct venues, and dates.
+                    </p>
+                    <button
+                      onClick={handleResetMatchSchedules}
+                      className="p-2 px-4 rounded bg-yellow-600 hover:bg-yellow-500 text-black font-extrabold text-[10px] uppercase transition-all flex items-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" /> RE-SEED WORLD CUP SCHEDULE
                     </button>
                   </div>
                 </div>
