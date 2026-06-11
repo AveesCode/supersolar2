@@ -1,0 +1,6 @@
+{
+  "name": "Super Solar FIFA World Cup 2026 Predictions",
+  "description": "A highly secure prediction tracker and leaderboard for FIFA World Cup 2026 matches, featuring an isolated participant view and separate authenticated admin controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,10 @@
+{
+  "apiKey": "AIzaSyFakeKeyPlaceholderForDeveloperUseOnly",
+  "authDomain": "dev-applet-project.firebaseapp.com",
+  "projectId": "dev-applet-project",
+  "storageBucket": "dev-applet-project.appspot.com",
+  "messagingSenderId": "123456789012",
+  "appId": "1:123456789012:web:fafafafafafafafafafafa",
+  "measurementId": "G-FAKEMEASURE",
+  "firestoreDatabaseId": "(default)"
+}

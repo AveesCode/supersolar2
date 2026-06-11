@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "Participant": {
+      "title": "Participant",
+      "description": "Represents a Super Solar 2026 participant with prediction picks",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the participant"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the participant"
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the participant"
+        },
+        "code": {
+          "type": "string",
+          "description": "Login password/code string (uppercase)"
+        },
+        "picks": {
+          "type": "object",
+          "description": "Map of match predictions where keys are match IDs and values are 'A', 'B', or 'Tie'"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the participant status is active"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Initial creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last updated timestamp"
+        }
+      },
+      "required": ["id", "firstName", "lastName", "code", "picks", "isActive", "createdAt", "updatedAt"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Represents a FIFA World Cup 2026 match",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique match ID (1 to 104)"
+        },
+        "a": {
+          "type": "string",
+          "description": "Team A name"
+        },
+        "b": {
+          "type": "string",
+          "description": "Team B name"
+        },
+        "v": {
+          "type": "string",
+          "description": "Venue name"
+        },
+        "c": {
+          "type": "string",
+          "description": "City name"
+        },
+        "t": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Match kickoff date-time as ISO string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Group", "Playoff"],
+          "description": "Stage of the tournament"
+        },
+        "res": {
+          "type": "string",
+          "enum": ["A", "B", "Tie"],
+          "description": "Official match result: A (Team A wins), B (Team B wins), Tie (Draw)"
+        }
+      },
+      "required": ["id", "a", "b", "v", "c", "t", "type"]
+    },
+    "SystemState": {
+      "title": "SystemState",
+      "description": "Global settings for the Super Solar portal",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Configuration primary key"
+        },
+        "systemName": {
+          "type": "string",
+          "description": "The title of the prediction portal"
+        },
+        "isContestActive": {
+          "type": "boolean",
+          "description": "Toggles general participant submissions"
+        },
+        "adminHash": {
+          "type": "string",
+          "description": "SHA-256 hash of the system administrator code"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last configuration update timestamp"
+        }
+      },
+      "required": ["id", "systemName", "isContestActive", "adminHash", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/participants/{participantId}": {
+      "schema": "Participant",
+      "description": "World Cup participants, credentials and predictions"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Official FIFA 2026 Match Schedule"
+    },
+    "/system/{systemId}": {
+      "schema": "SystemState",
+      "description": "Global configuration and authentication credentials"
+    }
+  }
+}

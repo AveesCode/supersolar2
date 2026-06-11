@@ -1,0 +1,141 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Deny-by-default)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'akumar2@uwm.com' || 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Participant validation helper
+    function isValidParticipant(p) {
+      return p.id is string
+        && p.id.size() <= 128
+        && p.firstName is string
+        && p.firstName.size() > 0
+        && p.firstName.size() <= 100
+        && p.lastName is string
+        && p.lastName.size() <= 100
+        && p.code is string
+        && p.code.size() <= 50
+        && p.picks is map
+        && p.isActive is bool;
+    }
+
+    // Match validation helper
+    function isValidMatch(m) {
+      return m.id is string
+        && m.id.size() <= 10
+        && m.a is string
+        && m.a.size() <= 100
+        && m.b is string
+        && m.b.size() <= 100
+        && m.v is string
+        && m.v.size() <= 150
+        && m.c is string
+        && m.c.size() <= 100
+        && m.t is string
+        && m.t.size() <= 50
+        && (m.type == 'Group' || m.type == 'Playoff');
+    }
+
+    // System state validation helper
+    function isValidSystemState(s) {
+      return s.id is string
+        && s.systemName is string
+        && s.systemName.size() > 0
+        && s.systemName.size() <= 100
+        && s.isContestActive is bool
+        && s.adminHash is string
+        && s.updatedAt == request.time;
+    }
+
+    // 1. Participants collection
+    match /participants/{participantId} {
+      // Standings and participants are publicly viewable
+      allow read: if true; 
+      
+      // Admins are allowed to register participants
+      allow create: if (
+        isAdmin() 
+        && isValidId(participantId) 
+        && isValidParticipant(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+      );
+
+      // Updates: either admin-level updates OR self-service predictions picks modifications
+      allow update: if (
+        isValidId(participantId)
+        && (
+          (isAdmin() && isValidParticipant(incoming()) && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time)
+          || (
+            incoming().diff(existing()).affectedKeys().hasOnly(['picks', 'updatedAt'])
+            && incoming().updatedAt == request.time
+            && incoming().firstName == existing().firstName
+            && incoming().lastName == existing().lastName
+            && incoming().code == existing().code
+            && incoming().isActive == existing().isActive
+          )
+        )
+      );
+
+      allow delete: if isAdmin() && isValidId(participantId);
+    }
+
+    // 2. Matches collection
+    match /matches/{matchId} {
+      allow read: if true; // Everyone can view the matches schedule and details
+
+      allow create, update: if (
+        isAdmin()
+        && isValidId(matchId)
+        && isValidMatch(incoming())
+      );
+
+      allow delete: if isAdmin() && isValidId(matchId);
+    }
+
+    // 3. System collection 
+    match /system/{systemId} {
+      allow read: if true; // Everyone can read global configurations
+      
+      allow write: if (
+        isAdmin()
+        && isValidId(systemId)
+        && (request.method == 'create' || request.method == 'update')
+        && isValidSystemState(incoming())
+      );
+    }
+
+    // 4. Admins list collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Configured via private console or CLI
+    }
+  }
+}
