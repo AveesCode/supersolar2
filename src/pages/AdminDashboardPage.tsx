@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 
 const ADMIN_HASH = "d43d008e1e431c20bf6acaa2ba6aa575e83da51eb43b1cd0eea2387e04ead39a";
-const OFFICIAL_ADMIN_EMAIL = 'akumar2@uwm.com';
+const OFFICIAL_ADMIN_EMAIL = 'aveesmail@gmail.com';
 
 const SHA256 = async (str: string) => {
   const msgBuffer = new TextEncoder().encode(str.toUpperCase());                    
