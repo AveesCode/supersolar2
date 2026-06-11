@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 
 const ADMIN_HASH = "d43d008e1e431c20bf6acaa2ba6aa575e83da51eb43b1cd0eea2387e04ead39a";
-const OFFICIAL_ADMIN_EMAILS = ['aveesmail@gmail.com', 'akumar2@uwm.com'];
+const OFFICIAL_ADMIN_EMAILS = ['aveesmail@gmail.com'];
 
 const SHA256 = async (str: string) => {
   const msgBuffer = new TextEncoder().encode(str.toUpperCase());                    
@@ -525,7 +525,7 @@ export default function AdminDashboardPage() {
               </button>
               
               <div className="text-[11px] text-slate-400 font-sans text-center px-4 leading-relaxed">
-                💡 **Official Admins**: Log in with <span className="font-bold text-yellow-500 font-mono">aveesmail@gmail.com</span> or <span className="font-bold text-yellow-500 font-mono">akumar2@uwm.com</span> to receive cloud database write access.
+                💡 **Official Admin**: Log in with <span className="font-bold text-yellow-500 font-mono">aveesmail@gmail.com</span> to receive cloud database write access.
               </div>
             </div>
 
