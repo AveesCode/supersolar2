@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 
 const ADMIN_HASH = "d43d008e1e431c20bf6acaa2ba6aa575e83da51eb43b1cd0eea2387e04ead39a";
-const OFFICIAL_ADMIN_EMAIL = 'aveesmail@gmail.com';
+const OFFICIAL_ADMIN_EMAILS = ['aveesmail@gmail.com', 'akumar2@uwm.com'];
 
 const SHA256 = async (str: string) => {
   const msgBuffer = new TextEncoder().encode(str.toUpperCase());                    
@@ -92,7 +92,7 @@ export default function AdminDashboardPage() {
     });
 
     // 2. Clear syncs unless authorized
-    const isReady = isSandboxAuthorized || adminUser?.email === OFFICIAL_ADMIN_EMAIL;
+    const isReady = isSandboxAuthorized || (adminUser?.email && OFFICIAL_ADMIN_EMAILS.includes(adminUser.email));
     if (!isReady) return;
 
     // Listen to participants
@@ -389,6 +389,38 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // 8.5 FORCE RE-SEED BOTH MATCHES AND PRE-REGISTERED PARTICIPANTS
+  const handleForceReSeed = async () => {
+    if (!confirm('🛑 WARNING: This will overwrite ALL 104 matches AND all 14 official pre-registered participants on the database/offline storage! Proceed?')) return;
+
+    try {
+      showFeedback('success', 'Force seeding matches and 14 participants... Please wait.');
+      localStorage.removeItem('world_cup_offline_matches');
+      localStorage.removeItem('world_cup_offline_participants');
+
+      const initPlayers = getDefaultParticipants();
+      const initSchedule = generateFullSchedule();
+
+      setParticipants(initPlayers);
+      setMatches(initSchedule);
+
+      localStorage.setItem('world_cup_offline_participants', JSON.stringify(initPlayers));
+      localStorage.setItem('world_cup_offline_matches', JSON.stringify(initSchedule));
+
+      // Overwrite db docs
+      for (const p of initPlayers) {
+        await setDoc(doc(db, 'participants', p.id), p);
+      }
+      for (const m of initSchedule) {
+        await setDoc(doc(db, 'matches', m.id), m);
+      }
+
+      showFeedback('success', 'FIFA 2026 participants and matches force re-seeded successfully on cloud DB!');
+    } catch (e: any) {
+      showFeedback('success', 'FIFA 2026 data re-seeded locally (Sandbox Mode)');
+    }
+  };
+
   // 9. BULK PRE-REGISTER THE OFFICIAL 14 PARTICIPANTS WITH CODES
   const handleBulkPreRegister = async () => {
     if (!confirm('📋 Proceed to pre-register the 14 official FIFA World Cup prediction game participants and generate their custom credentials?')) return;
@@ -462,7 +494,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const isAuthorized = isSandboxAuthorized || adminUser?.email === OFFICIAL_ADMIN_EMAIL;
+  const isAuthorized = isSandboxAuthorized || (adminUser?.email && OFFICIAL_ADMIN_EMAILS.includes(adminUser.email));
 
   if (!isAuthorized) {
     return (
@@ -493,7 +525,7 @@ export default function AdminDashboardPage() {
               </button>
               
               <div className="text-[11px] text-slate-400 font-sans text-center px-4 leading-relaxed">
-                💡 **Official Account**: Log in with <span className="font-bold text-yellow-500 font-mono">akumar2@uwm.com</span> to receive cloud database write access.
+                💡 **Official Admins**: Log in with <span className="font-bold text-yellow-500 font-mono">aveesmail@gmail.com</span> or <span className="font-bold text-yellow-500 font-mono">akumar2@uwm.com</span> to receive cloud database write access.
               </div>
             </div>
 
@@ -566,7 +598,7 @@ export default function AdminDashboardPage() {
               Control Workspace
             </span>
             <span className="text-slate-600 font-mono">•</span>
-            {adminUser?.email === OFFICIAL_ADMIN_EMAIL ? (
+            {(adminUser?.email && OFFICIAL_ADMIN_EMAILS.includes(adminUser.email)) ? (
               <span className="text-emerald-400 text-[10px] font-black uppercase font-mono tracking-wider flex items-center gap-1">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" /> CLOUD MODE
               </span>
@@ -1045,9 +1077,23 @@ export default function AdminDashboardPage() {
                     </p>
                     <button
                       onClick={handleResetMatchSchedules}
-                      className="p-2 px-4 rounded bg-yellow-600 hover:bg-yellow-500 text-black font-extrabold text-[10px] uppercase transition-all flex items-center gap-1.5"
+                      className="p-2 px-4 rounded bg-yellow-600 hover:bg-yellow-500 text-black font-extrabold text-[10px] uppercase transition-all flex items-center gap-1.5 cursor-pointer"
                     >
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" /> RE-SEED WORLD CUP SCHEDULE
+                      <RefreshCw className="w-3.5 h-3.5" /> RE-SEED WORLD CUP SCHEDULE
+                    </button>
+                  </div>
+
+                  {/* Force Re-Seed Card */}
+                  <div className="p-4 bg-amber-950/25 border border-amber-900/40 rounded-2xl space-y-2.5">
+                    <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block">🔄 FORCE FULL SYNCD RE-SEED</span>
+                    <p className="text-[10px] text-slate-400 leading-relaxed font-sans font-medium">
+                      Clears local browser storage caches and forces a full database overwrite/re-creation of both the 104 FIFA matches calendar and the list of 14 default pre-registered participants.
+                    </p>
+                    <button
+                      onClick={handleForceReSeed}
+                      className="p-2 px-4 rounded bg-amber-600 hover:bg-amber-500 text-black font-extrabold text-[10px] uppercase transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" /> FORCE FULL DATABASE RE-SEED
                     </button>
                   </div>
                 </div>
